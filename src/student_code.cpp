@@ -100,9 +100,7 @@ namespace CGL
 
     // Find each face's area by getting two vertices at a time.
     HalfedgeCIter h = halfedge();
-    vector<float> areas;
-    vector<Vector3D> normals;
-    float total = 0;
+    Vector3D normalTotal(0,0,0);
     do {
       VertexCIter neigh_0 = h->vertex();
 
@@ -115,28 +113,15 @@ namespace CGL
       VertexCIter neigh_2 = next_h->twin()->vertex();
 
       // Calculate the area using three vertices.
-      float area = 0.5 * cross(neigh_0->position - neigh_2->position, neigh_1->position - neigh_2->position).norm();
-      Vector3D normal = cross(neigh_0->position, neigh_1->position) * -1;
-
-      // Record the area of this face and its normal.
-      areas.push_back(area);
-      normals.push_back(normal);
-      total = total + area;
+      Vector3D normal = cross(neigh_1->position, neigh_2->position) * -1;
+      normalTotal = normalTotal + normal;
 
       h = h_twin->next();
 
     } while (h != halfedge());
 
-
-    Vector3D finalNormal(0, 0, 0);
-    for (int i = 0; i < areas.size(); i++) {
-      finalNormal = finalNormal + normals.at(i) * (areas.at(i) / total);
-    }
-
-    finalNormal.normalize();
-
-    cout << finalNormal << "\n";
-    return finalNormal;
+    normalTotal.normalize();
+    return normalTotal;
   }
 
   EdgeIter HalfedgeMesh::flipEdge( EdgeIter e0 )
