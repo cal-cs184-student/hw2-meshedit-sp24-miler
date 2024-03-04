@@ -15,8 +15,20 @@ namespace CGL
    */
   std::vector<Vector2D> BezierCurve::evaluateStep(std::vector<Vector2D> const &points)
   { 
-    // TODO Part 1.
-    return std::vector<Vector2D>();
+    std::vector<Vector2D> results;
+    // For each set of 2 points:
+    for (int i = 0; i < points.size() - 1; i++) {
+      // Create a new point and set its value to the interp of the two vectors
+      float resultX = points[i].x * (1 - t) + points[i + 1].x * t;
+      float resultY = points[i].y * (1 - t) + points[i + 1].y * t;
+      
+      Vector2D thisStep(resultX, resultY);
+      
+      results.push_back(thisStep);
+    }
+    // Stop at 1 less than the number of vectors
+    
+    return results;
   }
 
   /**
@@ -29,7 +41,7 @@ namespace CGL
    */
   std::vector<Vector3D> BezierPatch::evaluateStep(std::vector<Vector3D> const &points, double t) const
   {
-    // TODO Part 2.
+    
     return std::vector<Vector3D>();
   }
 
