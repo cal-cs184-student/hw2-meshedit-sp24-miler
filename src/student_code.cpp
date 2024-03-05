@@ -280,7 +280,7 @@ namespace CGL
     v1->halfedge() = h15;
     v2->halfedge() = h10;
     v3->halfedge() = h5;
-    v4->halfedge() = h1;
+    v4->halfedge() = h3;
 
     // Edges
     e0->halfedge() = h0;
@@ -312,17 +312,94 @@ namespace CGL
     // 1. Compute new positions for all the vertices in the input mesh, using the Loop subdivision rule,
     // and store them in Vertex::newPosition. At this point, we also want to mark each vertex as being
     // a vertex of the original mesh.
-    
+    VertexIter activeVertex = mesh.verticesBegin();
+
+    for (VertexIter activeVertex = mesh.verticesBegin(); activeVertex != mesh.verticesEnd(); activeVertex++) {
+      // This is an old vertex.
+      activeVertex->isNew = false;
+      
+      // This is an old vertex, so use the old vertex rule. Get n and u.
+      float n = activeVertex->degree();
+      float u = 3.0/16.0; // default for n=3
+      if (n != 3) {
+        u = 3.0 / (8.0 * n);
+      }
+
+      // Add up neighbor positions.
+      Vector3D original_neighbor_position_sum(0, 0, 0);
+      HalfedgeCIter h = activeVertex->halfedge();
+      do {
+        HalfedgeCIter h_twin = h->twin();
+        VertexCIter v = h_twin->vertex();
+        original_neighbor_position_sum = original_neighbor_position_sum + v->position;
+        h = h_twin->next();
+      } while (h != activeVertex->halfedge());
+
+      // Set the newPosition.
+      activeVertex->newPosition = (1 - n * u) * activeVertex->position + u * original_neighbor_position_sum;
+
+    } while (activeVertex != mesh.verticesBegin());
+
     // 2. Compute the updated vertex positions associated with edges, and store it in Edge::newPosition.
+    for (EdgeIter activeEdge = mesh.edgesBegin(); activeEdge != mesh.edgesEnd(); activeEdge++) {
+      // Remember that it's an old edge.
+      activeEdge->isNew = false;
+
+      // The midpoint will become a new vertex, so use the new vertex equation.
+      // Get A, B, C, D, where AB are on the edge and CD are on the touching faces.
+      VertexIter a = activeEdge->halfedge()->vertex();
+      VertexIter b = activeEdge->halfedge()->twin()->vertex();
+      VertexIter c = activeEdge->halfedge()->next()->next()->vertex();
+      VertexIter d = activeEdge->halfedge()->twin()->next()->next()->vertex();
+
+      // Use the formula to set the new position.
+      activeEdge->newPosition = (3.0 / 8.0) * (a->position + b->position) + (1.0 / 8.0) * (c->position + d->position);
+      cout << "New pos is " << activeEdge->newPosition << "\n";
+    }
     
     // 3. Split every edge in the mesh, in any order. For future reference, we're also going to store some
     // information about which subdivide edges come from splitting an edge in the original mesh, and which edges
     // are new, by setting the flat Edge::isNew. Note that in this loop, we only want to iterate over edges of
     // the original mesh---otherwise, we'll end up splitting edges that we just split (and the loop will never end!)
+    EdgeIter e = mesh.edgesBegin();
+    while (e != mesh.edgesEnd()) {
+      EdgeIter nextEdge = e;
+      nextEdge++;
+
+      // Let's check if this edge should be split. If either vertex is new, don't split it.
+      VertexIter v0 = e->halfedge()->vertex();
+      VertexIter v1 = e->halfedge()->twin()->vertex();
+      bool shouldSplit = !v0->isNew && !v1->isNew;
+
+      if (shouldSplit) {
+        VertexIter newVertex = mesh.splitEdge(e);
+        newVertex->isNew = true;
+
+        // Record the new and old edges. Treat the split old edge as still old, even though it's technically two edges now.
+        newVertex->halfedge()->edge()->isNew = false;
+        newVertex->halfedge()->next()->next()->edge()->isNew = true;
+        newVertex->halfedge()->next()->next()->twin()->next()->next()->edge()->isNew = false;
+        newVertex->halfedge()->twin()->next()->edge()->isNew = true;
+
+        // Copy over the new position from the edge
+        newVertex->newPosition = e->newPosition;
+      }
+      e = nextEdge;
+    }
     
     // 4. Flip any new edge that connects an old and new vertex.
+    for (EdgeIter activeEdge = mesh.edgesBegin(); activeEdge != mesh.edgesEnd(); activeEdge++) {
+      VertexIter v0 = activeEdge->halfedge()->vertex();
+      VertexIter v1 = activeEdge->halfedge()->twin()->vertex();
+
+      if (((v0->isNew && !v1->isNew) || (!v0->isNew && v1->isNew)) && activeEdge->isNew) {       
+        mesh.flipEdge(activeEdge);
+      }
+    }
 
     // 5. Copy the new vertex positions into final Vertex::position.
-
+    for (VertexIter activeVertex = mesh.verticesBegin(); activeVertex != mesh.verticesEnd(); activeVertex++) {
+      activeVertex->position = activeVertex->newPosition;
+    }
   }
 }
