@@ -354,7 +354,6 @@ namespace CGL
 
       // Use the formula to set the new position.
       activeEdge->newPosition = (3.0 / 8.0) * (a->position + b->position) + (1.0 / 8.0) * (c->position + d->position);
-      cout << "New pos is " << activeEdge->newPosition << "\n";
     }
     
     // 3. Split every edge in the mesh, in any order. For future reference, we're also going to store some
